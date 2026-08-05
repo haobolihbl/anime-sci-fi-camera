@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#141018" />
+  <title>墨境 · 《轮回失格》创作台</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="studio">
+    <section class="hero card">
+      <p class="eyebrow">墨境 STORY STUDIO · 当前项目</p>
+      <h1>《轮回失格》</h1>
+      <p class="subtitle">无限流 / 规则怪谈 / 群像成长。主角：秦川。第一副本：七号教学楼。</p>
+      <div class="hero-actions">
+        <button class="primary" data-command="续写第二章">续写第二章</button>
+        <button class="secondary" data-command="拆分本卷章节">拆分本卷章节</button>
+      </div>
+    </section>
+
+    <section class="guide card">
+      <div>
+        <p class="eyebrow">怎么用</p>
+        <h2>你只要点按钮，或者按数字键选择。</h2>
+      </div>
+      <ol>
+        <li><b>1</b><span>续写下一章：按 2000-2500 字一章推进。</span></li>
+        <li><b>2</b><span>改设定：主角、书名、职业、规则都能继续换。</span></li>
+        <li><b>3</b><span>看大纲：先看每章发生什么，再决定写哪章。</span></li>
+        <li><b>4</b><span>润色检查：检查悬念、节奏、爽点和恐怖感。</span></li>
+      </ol>
+    </section>
+
+    <section class="command-board card" aria-label="可选命令">
+      <div class="section-title">
+        <p class="eyebrow">可直接选择</p>
+        <h2>命令面板</h2>
+      </div>
+      <div class="commands">
+        <button data-command="续写第二章"><kbd>1</kbd><span><b>续写第二章</b><small>接手机来电，推进红校服女生出场。</small></span></button>
+        <button data-command="更换设定"><kbd>2</kbd><span><b>改一个设定</b><small>例如主角名、书名、职业、副本规则。</small></span></button>
+        <button data-command="查看七号教学楼30章大纲"><kbd>3</kbd><span><b>看 30 章大纲</b><small>每章控制在 2000-2500 字。</small></span></button>
+        <button data-command="评估章节质量"><kbd>4</kbd><span><b>章节质量检查</b><small>对标头部网文节奏做修改建议。</small></span></button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card synopsis">
+        <p class="eyebrow">核心钩子</p>
+        <h2>秦川第三次睁眼时，自己的尸体挂在教室门口。</h2>
+        <p>他每次死亡都会回到副本开局，但会保留疼痛、记忆和精神污染；若改变副本角色命运，对方可成为拥有循环记忆的同伴。</p>
+      </article>
+
+      <article class="card chapter-plan">
+        <p class="eyebrow">章节划分</p>
+        <h2>每章 2000-2500 字</h2>
+        <div class="meter"><i style="width:88%"></i></div>
+        <p>建议目标：2200 字。少于 2000 字补冲突，多于 2500 字拆成两章，保证手机端阅读节奏。</p>
+      </article>
+    </section>
+
+    <section class="card next-steps">
+      <div class="section-title">
+        <p class="eyebrow">接下来</p>
+        <h2>推荐先做这 4 件事</h2>
+      </div>
+      <div class="next-grid">
+        <button data-command="生成第二章正文"><b>01 写第二章正文</b><span>从“来电人秦川”接起，目标 2200 字。</span></button>
+        <button data-command="补全第一卷大纲"><b>02 补 30 章大纲</b><span>把七号教学楼拆成 30 个小钩子。</span></button>
+        <button data-command="设计苏晚晴人物弧"><b>03 定苏晚晴人物弧</b><span>明确她为什么能成为第一个同伴。</span></button>
+        <button data-command="建立章节质检表"><b>04 建章节质检表</b><span>每章检查钩子、反转、恐怖感、爽点。</span></button>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <div class="section-title">
+        <p class="eyebrow">第一卷 · 七号教学楼</p>
+        <h2>近期章节安排</h2>
+      </div>
+      <div class="chapters">
+        <div><b>第 1 章 门口的尸体</b><span>已完成 · 约 2200 字 · 手机响起：来电人“秦川”。</span></div>
+        <div class="active"><b>第 2 章 第三次了</b><span>待续写 · 接电话、红校服女生出现、揭示“不要相信苏晚晴”。</span></div>
+        <div><b>第 3 章 不存在的第七人</b><span>找出人数错误，玩家中混入不该存在的人。</span></div>
+        <div><b>第 4 章 苏晚晴的座位</b><span>秦川第一次主动改变副本角色命运。</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

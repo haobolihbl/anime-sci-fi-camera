@@ -1,471 +1,234 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  AppState,
   Pressable,
+  SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  useWindowDimensions,
+  TextInput,
   View,
 } from 'react-native';
-import {
-  Camera,
-  type Recorder,
-  useCameraDevice,
-  useCameraPermission,
-  useMicrophonePermission,
-  useVideoOutput,
-} from 'react-native-vision-camera';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-import { FilterPreviewOverlay } from './src/components/FilterPreviewOverlay';
-import { ParameterPanel } from './src/components/ParameterPanel';
-import { PermissionGate } from './src/components/PermissionGate';
-import { type FilterParameterKey } from './src/filter/preset';
-import {
-  cameraReducer,
-  initialCameraModel,
-} from './src/state/cameraModel';
-import { colors } from './src/theme/colors';
-import {
-  fitInside,
-  previewRatio,
-  recordingTarget,
-} from './src/utils/cameraSizing';
 
-function useRecordingClock(phase: string, startedAt?: number) {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    if (phase !== 'recording' || !startedAt) {
-      setElapsed(0);
-      return;
-    }
-    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    tick();
-    const timer = setInterval(tick, 500);
-    return () => clearInterval(timer);
-  }, [phase, startedAt]);
-  const minutes = Math.floor(elapsed / 60)
-    .toString()
-    .padStart(2, '0');
-  const seconds = (elapsed % 60).toString().padStart(2, '0');
-  return `${minutes}:${seconds}`;
-}
+type Project = {
+  id: string;
+  title: string;
+  genre: string;
+  words: string;
+  updated: string;
+  progress: number;
+  accent: string;
+};
 
-function CameraStudio() {
-  const insets = useSafeAreaInsets();
-  const window = useWindowDimensions();
-  const [model, dispatch] = useReducer(cameraReducer, initialCameraModel);
-  const [appIsActive, setAppIsActive] = useState(true);
-  const cameraPermission = useCameraPermission();
-  const microphonePermission = useMicrophonePermission();
-  const device = useCameraDevice(model.lens);
-  const recorderRef = useRef<Recorder | null>(null);
-  const target = recordingTarget(model.aspect);
-  const videoOutput = useVideoOutput({
-    targetResolution: target,
-    targetBitRate: 12_000_000,
-    enableAudio: microphonePermission.hasPermission,
-    fileType: 'mp4',
-  });
-  const outputs = useMemo(() => [videoOutput], [videoOutput]);
-  const clock = useRecordingClock(
-    model.recording.phase,
-    model.recording.startedAt,
+const projects: Project[] = [
+  { id: '1', title: '轮回失格', genre: '无限流 · 规则怪谈', words: '0.7万字', updated: '正在创作第 2 章', progress: 11, accent: '#6B2737' },
+  { id: '2', title: '七号教学楼', genre: '第一副本 · 章节大纲', words: '6-7万字', updated: '章节规划 30 章', progress: 18, accent: '#3F4A59' },
+];
+
+const tools = [
+  { icon: '1', label: '写第二章', color: '#8067F2', bg: '#EEEAFE' },
+  { icon: '2', label: '补30章大纲', color: '#2690C3', bg: '#E1F4FC' },
+  { icon: '3', label: '苏晚晴人物弧', color: '#D87F2D', bg: '#FFF1DF' },
+  { icon: '4', label: '章节质检表', color: '#3B9B73', bg: '#E5F6ED' },
+];
+
+function App() {
+  const [activeTab, setActiveTab] = useState('创作');
+  const [selectedProject, setSelectedProject] = useState('1');
+  const [targetWords, setTargetWords] = useState(2200);
+  const todayWords = 1268;
+  const targetPercent = useMemo(
+    () => Math.min(100, Math.round((todayWords / targetWords) * 100)),
+    [targetWords],
   );
-
-  const stopRecording = useCallback(async () => {
-    const recorder = recorderRef.current;
-    if (!recorder?.isRecording) {
-      return;
-    }
-    dispatch({ type: 'RECORD_STOPPING' });
-    try {
-      await recorder.stopRecording();
-    } catch (error) {
-      dispatch({
-        type: 'RECORD_FAILED',
-        message: error instanceof Error ? error.message : '停止录像失败',
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextState => {
-      const active = nextState === 'active';
-      setAppIsActive(active);
-      if (!active) {
-        stopRecording();
-      }
-    });
-    return () => subscription.remove();
-  }, [stopRecording]);
-
-  const requestPermissions = useCallback(async () => {
-    if (cameraPermission.canRequestPermission) {
-      await cameraPermission.requestPermission();
-    }
-    if (microphonePermission.canRequestPermission) {
-      await microphonePermission.requestPermission();
-    }
-  }, [cameraPermission, microphonePermission]);
-
-  const startRecording = useCallback(async () => {
-    dispatch({ type: 'RECORD_PREPARE' });
-    try {
-      const recorder = await videoOutput.createRecorder({ maxDuration: 1800 });
-      recorderRef.current = recorder;
-      await recorder.startRecording(
-        filePath => {
-          recorderRef.current = null;
-          dispatch({ type: 'RECORD_FINISHED', filePath });
-        },
-        error => {
-          recorderRef.current = null;
-          dispatch({ type: 'RECORD_FAILED', message: error.message });
-        },
-      );
-      dispatch({ type: 'RECORD_STARTED', startedAt: Date.now() });
-    } catch (error) {
-      recorderRef.current = null;
-      dispatch({
-        type: 'RECORD_FAILED',
-        message: error instanceof Error ? error.message : '启动录像失败',
-      });
-    }
-  }, [videoOutput]);
-
-  const toggleRecording = useCallback(() => {
-    if (model.recording.phase === 'recording') {
-      stopRecording();
-    } else if (
-      model.recording.phase === 'idle' ||
-      model.recording.phase === 'error'
-    ) {
-      startRecording();
-    }
-  }, [model.recording.phase, startRecording, stopRecording]);
-
-  const adjustFilter = useCallback(
-    (key: FilterParameterKey, delta: number) =>
-      dispatch({ type: 'ADJUST_FILTER', key, delta }),
-    [],
-  );
-
-  if (!cameraPermission.hasPermission) {
-    return (
-      <PermissionGate
-        canRequest={cameraPermission.canRequestPermission}
-        onRequest={requestPermissions}
-      />
-    );
-  }
-
-  const reservedHeight = 236 + insets.top + insets.bottom;
-  const previewSize = fitInside(
-    previewRatio(model.aspect),
-    Math.max(240, window.width - 24),
-    Math.max(220, window.height - reservedHeight),
-  );
-  const isBusy =
-    model.recording.phase === 'preparing' ||
-    model.recording.phase === 'stopping';
-  const isRecording = model.recording.phase === 'recording';
 
   return (
-    <View
-      style={[
-        styles.screen,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.ink} />
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>NEO CEL // 01</Text>
-          <Text style={styles.subhead}>柔光角色 · 数字空间</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <Pressable
-            disabled={isBusy || isRecording}
-            onPress={() => dispatch({ type: 'TOGGLE_LENS' })}
-            style={styles.headerButton}>
-            <Text style={styles.headerButtonText}>
-              {model.lens === 'front' ? '前置' : '后置'} ↻
-            </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F7FC" />
+      <View style={styles.appShell}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.eyebrow}>墨境 · STORY STUDIO</Text>
+            <Text style={styles.greeting}>下午好，创作者</Text>
+          </View>
+          <Pressable style={styles.avatar} accessibilityLabel="打开个人中心">
+            <Text style={styles.avatarText}>墨</Text>
+            <View style={styles.onlineDot} />
           </Pressable>
         </View>
-      </View>
 
-      <View style={styles.previewArea}>
-        <View
-          style={[
-            styles.cameraFrame,
-            { width: previewSize.width, height: previewSize.height },
-          ]}>
-          {device ? (
-            <Camera
-              style={StyleSheet.absoluteFill}
-              device={device}
-              outputs={outputs}
-              isActive={appIsActive}
-              mirrorMode="auto"
-              resizeMode="cover"
-              enableNativeTapToFocusGesture
-              enableNativeZoomGesture
-              onError={error =>
-                dispatch({ type: 'RECORD_FAILED', message: error.message })
-              }
-            />
-          ) : (
-            <View style={styles.noCamera}>
-              <Text style={styles.noCameraText}>正在连接相机…</Text>
-            </View>
-          )}
-          <FilterPreviewOverlay parameters={model.parameters} />
-          <View style={styles.previewMeta}>
-            <View style={styles.livePill}>
-              <View
-                style={[styles.liveDot, isRecording && styles.liveDotRecording]}
-              />
-              <Text style={styles.liveText}>
-                {isRecording ? clock : 'STYLE PREVIEW'}
-              </Text>
-            </View>
-            <Text style={styles.formatText}>
-              {target.width}×{target.height}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.controlRow}>
-        <View style={styles.segmented}>
-          {(['9:16', '16:9'] as const).map(aspect => (
-            <Pressable
-              key={aspect}
-              disabled={isBusy || isRecording}
-              onPress={() => dispatch({ type: 'SET_ASPECT', aspect })}
-              style={[
-                styles.segment,
-                model.aspect === aspect && styles.segmentActive,
-              ]}>
-              <Text
-                style={[
-                  styles.segmentText,
-                  model.aspect === aspect && styles.segmentTextActive,
-                ]}>
-                {aspect}
-              </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.heroCard}>
+            <View style={styles.heroGlowOne} />
+            <View style={styles.heroGlowTwo} />
+            <Text style={styles.heroKicker}>✦ 让好故事自然发生</Text>
+            <Text style={styles.heroTitle}>从《轮回失格》，{`\n`}到可连载章节</Text>
+            <Text style={styles.heroBody}>主角秦川，第一副本《七号教学楼》；章节按 2000-2500 字拆分，目标 2200 字。</Text>
+            <Pressable style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>继续第 2 章</Text>
             </Pressable>
-          ))}
-        </View>
+          </View>
 
-        <Pressable
-          accessibilityLabel={isRecording ? '停止录像' : '开始录像'}
-          disabled={isBusy || !device}
-          onPress={toggleRecording}
-          style={[
-            styles.recordOuter,
-            isBusy && styles.recordDisabled,
-            isRecording && styles.recordOuterActive,
-          ]}>
-          <View
-            style={[styles.recordInner, isRecording && styles.recordStop]}
-          />
-        </Pressable>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>创作工具</Text>
+            <Text style={styles.sectionHint}>接下来先选一步</Text>
+          </View>
+          <View style={styles.toolGrid}>
+            {tools.map(tool => (
+              <Pressable key={tool.label} style={styles.toolCard}>
+                <View style={[styles.toolIcon, { backgroundColor: tool.bg }]}>
+                  <Text style={[styles.toolIconText, { color: tool.color }]}>{tool.icon}</Text>
+                </View>
+                <Text style={styles.toolLabel}>{tool.label}</Text>
+                <Text style={styles.toolArrow}>›</Text>
+              </Pressable>
+            ))}
+          </View>
 
-        <View style={styles.pipelineBadge}>
-          <View style={styles.pipelineDot} />
-          <Text style={styles.pipelineText}>GPU 接口</Text>
-          <Text style={styles.pipelineSubtext}>已预留</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>我的作品</Text>
+            <Pressable><Text style={styles.link}>全部作品  ›</Text></Pressable>
+          </View>
+          {projects.map(project => {
+            const selected = project.id === selectedProject;
+            return (
+              <Pressable
+                key={project.id}
+                onPress={() => setSelectedProject(project.id)}
+                style={[styles.projectCard, selected && styles.projectCardSelected]}>
+                <View style={[styles.bookCover, { backgroundColor: project.accent }]}>
+                  <Text style={styles.bookMark}>墨境出品</Text>
+                  <View style={styles.bookLine} />
+                  <Text numberOfLines={2} style={styles.bookTitle}>{project.title}</Text>
+                </View>
+                <View style={styles.projectInfo}>
+                  <View style={styles.projectTitleRow}>
+                    <Text style={styles.projectTitle}>{project.title}</Text>
+                    <Text style={styles.projectMore}>•••</Text>
+                  </View>
+                  <Text style={styles.projectMeta}>{project.genre} · {project.words}</Text>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${project.progress}%` }]} />
+                  </View>
+                  <Text style={styles.updated}>{project.updated}</Text>
+                </View>
+                {selected && (
+                  <Pressable style={styles.continueButton}>
+                    <Text style={styles.continueButtonText}>续写</Text>
+                  </Pressable>
+                )}
+              </Pressable>
+            );
+          })}
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>今日创作</Text>
+            <Text style={styles.streak}>🔥 连续 7 天</Text>
+          </View>
+          <View style={styles.dailyCard}>
+            <View style={styles.dailyTop}>
+              <View>
+                <Text style={styles.dailyLabel}>今日已写</Text>
+                <Text style={styles.dailyNumber}>{todayWords.toLocaleString()}<Text style={styles.dailyUnit}> 字</Text></Text>
+              </View>
+              <View style={styles.targetWrap}>
+                <Text style={styles.targetLabel}>目标</Text>
+                <TextInput
+                  accessibilityLabel="每日字数目标"
+                  keyboardType="number-pad"
+                  onChangeText={value => setTargetWords(Number(value) || 1)}
+                  style={styles.targetInput}
+                  value={String(targetWords)}
+                />
+                <Text style={styles.targetLabel}>字</Text>
+              </View>
+            </View>
+            <View style={styles.dailyTrack}>
+              <View style={[styles.dailyFill, { width: `${targetPercent}%` }]} />
+            </View>
+            <Text style={styles.encouragement}>已完成 {targetPercent}%，再写 {Math.max(0, targetWords - todayWords)} 字就达成今日目标</Text>
+          </View>
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+
+        <View style={styles.tabBar}>
+          {[['⌂', '创作'], ['▣', '书架'], ['✦', '成长'], ['◉', '我的']].map(([icon, label]) => {
+            const active = activeTab === label;
+            return (
+              <Pressable key={label} onPress={() => setActiveTab(label)} style={styles.tabItem}>
+                <Text style={[styles.tabIcon, active && styles.tabActive]}>{icon}</Text>
+                <Text style={[styles.tabLabel, active && styles.tabActive]}>{label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
-
-      <ParameterPanel
-        parameters={model.parameters}
-        onAdjust={adjustFilter}
-        onReset={() => dispatch({ type: 'RESET_FILTER' })}
-      />
-
-      {model.recording.error ? (
-        <Pressable
-          style={styles.errorBanner}
-          onPress={() => dispatch({ type: 'CLEAR_ERROR' })}>
-          <Text numberOfLines={2} style={styles.errorText}>
-            {model.recording.error} · 点按关闭
-          </Text>
-        </Pressable>
-      ) : null}
-      {model.recording.lastFilePath ? (
-        <Text numberOfLines={1} style={styles.savedText}>
-          已保存本次录像：{model.recording.lastFilePath}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-export default function App() {
-  return (
-    <SafeAreaProvider>
-      <CameraStudio />
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ink },
-  header: {
-    height: 58,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  brand: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-  },
-  subhead: { marginTop: 3, color: colors.textMuted, fontSize: 10 },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  headerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: colors.panel,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-  },
-  headerButtonText: { color: colors.text, fontSize: 11, fontWeight: '700' },
-  previewArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  cameraFrame: {
-    overflow: 'hidden',
-    borderRadius: 22,
-    backgroundColor: colors.panel,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 233, 255, 0.34)',
-  },
-  noCamera: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  noCameraText: { color: colors.textMuted, fontSize: 13 },
-  previewMeta: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(5, 7, 13, 0.64)',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: colors.cyan,
-  },
-  liveDotRecording: { backgroundColor: colors.red },
-  liveText: {
-    color: colors.text,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    fontVariant: ['tabular-nums'],
-  },
-  formatText: {
-    color: colors.text,
-    fontSize: 9,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(5, 7, 13, 0.64)',
-  },
-  controlRow: {
-    height: 76,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  segmented: {
-    width: 94,
-    flexDirection: 'row',
-    padding: 3,
-    borderRadius: 12,
-    backgroundColor: colors.panel,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    borderRadius: 9,
-  },
-  segmentActive: { backgroundColor: colors.panelRaised },
-  segmentText: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
-  segmentTextActive: { color: colors.cyan },
-  recordOuter: {
-    width: 66,
-    height: 66,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordOuterActive: { borderColor: colors.red },
-  recordDisabled: { opacity: 0.42 },
-  recordInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 999,
-    backgroundColor: colors.red,
-  },
-  recordStop: { width: 25, height: 25, borderRadius: 7 },
-  pipelineBadge: { width: 94, alignItems: 'center' },
-  pipelineDot: {
-    width: 6,
-    height: 6,
-    marginBottom: 4,
-    borderRadius: 999,
-    backgroundColor: colors.violet,
-  },
-  pipelineText: { color: colors.text, fontSize: 10, fontWeight: '700' },
-  pipelineSubtext: { marginTop: 2, color: colors.textMuted, fontSize: 9 },
-  errorBanner: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 128,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 73, 109, 0.92)',
-  },
-  errorText: { color: colors.text, fontSize: 12, textAlign: 'center' },
-  savedText: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 5,
-    color: colors.textMuted,
-    fontSize: 9,
-    textAlign: 'center',
-  },
+  safeArea: { flex: 1, backgroundColor: '#F8F7FC' },
+  appShell: { flex: 1, backgroundColor: '#F8F7FC' },
+  header: { height: 84, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  eyebrow: { color: '#786EA0', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 5 },
+  greeting: { color: '#211D2D', fontSize: 21, fontWeight: '800', letterSpacing: -0.4 },
+  avatar: { width: 42, height: 42, borderRadius: 15, backgroundColor: '#E8E2FA', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#6653C4', fontSize: 17, fontWeight: '800' },
+  onlineDot: { position: 'absolute', right: -1, bottom: 1, width: 11, height: 11, borderRadius: 6, backgroundColor: '#46B982', borderWidth: 2, borderColor: '#F8F7FC' },
+  scrollContent: { paddingHorizontal: 18 },
+  heroCard: { minHeight: 224, padding: 22, borderRadius: 26, backgroundColor: '#302752', overflow: 'hidden' },
+  heroGlowOne: { position: 'absolute', width: 220, height: 220, borderRadius: 110, right: -60, top: -70, backgroundColor: '#59458B' },
+  heroGlowTwo: { position: 'absolute', width: 140, height: 140, borderRadius: 70, right: 15, bottom: -80, backgroundColor: '#7861AD', opacity: 0.55 },
+  heroKicker: { color: '#D7C9FF', fontSize: 12, fontWeight: '700', letterSpacing: 0.6, marginBottom: 11 },
+  heroTitle: { color: '#FFFFFF', fontSize: 28, lineHeight: 37, fontWeight: '900', letterSpacing: -0.8 },
+  heroBody: { width: '72%', color: '#CBC3DE', fontSize: 12, lineHeight: 19, marginTop: 8 },
+  primaryButton: { alignSelf: 'flex-start', marginTop: 17, paddingHorizontal: 17, height: 38, borderRadius: 12, backgroundColor: '#F4F0FF', justifyContent: 'center' },
+  primaryButtonText: { color: '#4D3B85', fontSize: 13, fontWeight: '800' },
+  sectionHeader: { marginTop: 25, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { color: '#282332', fontSize: 17, fontWeight: '800' },
+  sectionHint: { color: '#9993A6', fontSize: 11 },
+  link: { color: '#7562C1', fontSize: 12, fontWeight: '600' },
+  toolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  toolCard: { width: '48.5%', height: 70, flexDirection: 'row', alignItems: 'center', borderRadius: 18, paddingHorizontal: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EEEAF3' },
+  toolIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 9 },
+  toolIconText: { fontSize: 19, fontWeight: '800' },
+  toolLabel: { flex: 1, color: '#393443', fontSize: 13, fontWeight: '700' },
+  toolArrow: { color: '#B8B2BF', fontSize: 19 },
+  projectCard: { minHeight: 110, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, padding: 11, marginBottom: 10, borderWidth: 1, borderColor: '#EEEAF3' },
+  projectCardSelected: { borderColor: '#D6CBFF', shadowColor: '#5B439D', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  bookCover: { width: 64, height: 86, borderRadius: 10, padding: 8, justifyContent: 'space-between', overflow: 'hidden' },
+  bookMark: { color: '#FFFFFF', opacity: 0.7, fontSize: 8, fontWeight: '700' },
+  bookLine: { position: 'absolute', right: -20, top: 28, width: 85, height: 1, backgroundColor: 'rgba(255,255,255,0.3)', transform: [{ rotate: '-28deg' }] },
+  bookTitle: { color: '#FFFFFF', fontSize: 13, lineHeight: 17, fontWeight: '800' },
+  projectInfo: { flex: 1, alignSelf: 'stretch', justifyContent: 'center', marginLeft: 13 },
+  projectTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  projectTitle: { color: '#2A2632', fontSize: 15, fontWeight: '800' },
+  projectMore: { color: '#B3ADB9', fontSize: 12, letterSpacing: 1 },
+  projectMeta: { color: '#8E8797', fontSize: 11, marginTop: 6 },
+  progressTrack: { marginTop: 10, width: '72%', height: 4, backgroundColor: '#EEEAF3', borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: 4, backgroundColor: '#8A72E6', borderRadius: 3 },
+  updated: { color: '#AAA4AF', fontSize: 9, marginTop: 6 },
+  continueButton: { position: 'absolute', right: 12, bottom: 12, backgroundColor: '#EFEAFE', paddingHorizontal: 13, paddingVertical: 7, borderRadius: 10 },
+  continueButtonText: { color: '#6852C4', fontSize: 11, fontWeight: '800' },
+  streak: { color: '#D16C3D', backgroundColor: '#FFF0E7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, fontSize: 10, fontWeight: '700' },
+  dailyCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 17, borderWidth: 1, borderColor: '#EEEAF3' },
+  dailyTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dailyLabel: { color: '#8E8797', fontSize: 11, marginBottom: 3 },
+  dailyNumber: { color: '#302A3B', fontSize: 24, fontWeight: '900' },
+  dailyUnit: { color: '#777181', fontSize: 11, fontWeight: '500' },
+  targetWrap: { flexDirection: 'row', alignItems: 'center' },
+  targetLabel: { color: '#9A94A1', fontSize: 10 },
+  targetInput: { color: '#6254A7', fontSize: 12, fontWeight: '700', textAlign: 'center', minWidth: 42, paddingVertical: 3, marginHorizontal: 4, backgroundColor: '#F2EFFB', borderRadius: 7 },
+  dailyTrack: { marginTop: 14, height: 7, backgroundColor: '#EEEAF5', borderRadius: 5, overflow: 'hidden' },
+  dailyFill: { height: 7, borderRadius: 5, backgroundColor: '#8068D5' },
+  encouragement: { color: '#8B8492', fontSize: 10, marginTop: 9 },
+  bottomSpacer: { height: 30 },
+  tabBar: { height: 72, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#ECE8F1', paddingBottom: 4 },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  tabIcon: { color: '#AAA4B0', fontSize: 20, fontWeight: '600' },
+  tabLabel: { color: '#AAA4B0', fontSize: 10, fontWeight: '600' },
+  tabActive: { color: '#6B55C6' },
 });
+
+export default App;
