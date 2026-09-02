@@ -3,91 +3,160 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#141018" />
-  <title>墨境 · 《轮回失格》创作台</title>
+  <meta name="theme-color" content="#17131d" />
+  <meta name="description" content="墨境——可离线使用、自动保存的中文网文创作工作台。" />
+  <title>墨境 · 网文创作工作台</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="studio">
-    <section class="hero card">
-      <p class="eyebrow">墨境 STORY STUDIO · 当前项目</p>
-      <h1>《轮回失格》</h1>
-      <p class="subtitle">无限流 / 规则怪谈 / 群像成长。主角：秦川。第一副本：七号教学楼。</p>
-      <div class="hero-actions">
-        <button class="primary" data-command="续写第二章">续写第二章</button>
-        <button class="secondary" data-command="拆分本卷章节">拆分本卷章节</button>
-      </div>
-    </section>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="墨境创作工作台首页">
+        <span class="brand-mark">墨</span>
+        <span><b>墨境</b><small>网文创作工作台</small></span>
+      </a>
 
-    <section class="guide card">
-      <div>
-        <p class="eyebrow">怎么用</p>
-        <h2>你只要点按钮，或者按数字键选择。</h2>
-      </div>
-      <ol>
-        <li><b>1</b><span>续写下一章：按 2000-2500 字一章推进。</span></li>
-        <li><b>2</b><span>改设定：主角、书名、职业、规则都能继续换。</span></li>
-        <li><b>3</b><span>看大纲：先看每章发生什么，再决定写哪章。</span></li>
-        <li><b>4</b><span>润色检查：检查悬念、节奏、爽点和恐怖感。</span></li>
-      </ol>
-    </section>
+      <nav class="view-tabs" aria-label="工作区切换">
+        <button class="active" type="button" data-view="write">正文</button>
+        <button type="button" data-view="outline">大纲</button>
+      </nav>
 
-    <section class="command-board card" aria-label="可选命令">
-      <div class="section-title">
-        <p class="eyebrow">可直接选择</p>
-        <h2>命令面板</h2>
+      <div class="top-actions">
+        <span class="save-state" id="saveState" aria-live="polite"><i></i>已自动保存</span>
+        <button class="quiet-button" id="exportMarkdown" type="button">导出正文</button>
+        <button class="quiet-button" id="backupProject" type="button">备份项目</button>
+        <button class="primary-button" id="newChapterTop" type="button">＋ 新建章节</button>
       </div>
-      <div class="commands">
-        <button data-command="续写第二章"><kbd>1</kbd><span><b>续写第二章</b><small>接手机来电，推进红校服女生出场。</small></span></button>
-        <button data-command="更换设定"><kbd>2</kbd><span><b>改一个设定</b><small>例如主角名、书名、职业、副本规则。</small></span></button>
-        <button data-command="查看七号教学楼30章大纲"><kbd>3</kbd><span><b>看 30 章大纲</b><small>每章控制在 2000-2500 字。</small></span></button>
-        <button data-command="评估章节质量"><kbd>4</kbd><span><b>章节质量检查</b><small>对标头部网文节奏做修改建议。</small></span></button>
-      </div>
-    </section>
+    </header>
 
-    <section class="grid">
-      <article class="card synopsis">
-        <p class="eyebrow">核心钩子</p>
-        <h2>秦川第三次睁眼时，自己的尸体挂在教室门口。</h2>
-        <p>他每次死亡都会回到副本开局，但会保留疼痛、记忆和精神污染；若改变副本角色命运，对方可成为拥有循环记忆的同伴。</p>
-      </article>
+    <main class="workspace">
+      <aside class="sidebar" aria-label="作品与章节">
+        <section class="project-switcher">
+          <label for="projectSelect">当前作品</label>
+          <div class="select-row">
+            <select id="projectSelect" aria-label="切换作品"></select>
+            <button class="icon-button" id="newProject" type="button" title="新建作品" aria-label="新建作品">＋</button>
+          </div>
+          <div class="project-tools">
+            <button id="importProject" type="button">导入备份</button>
+            <button id="deleteProject" class="danger-text" type="button">删除作品</button>
+            <input id="importFile" type="file" accept="application/json,.json" hidden />
+          </div>
+        </section>
 
-      <article class="card chapter-plan">
-        <p class="eyebrow">章节划分</p>
-        <h2>每章 2000-2500 字</h2>
-        <div class="meter"><i style="width:88%"></i></div>
-        <p>建议目标：2200 字。少于 2000 字补冲突，多于 2500 字拆成两章，保证手机端阅读节奏。</p>
-      </article>
-    </section>
+        <section class="chapter-section">
+          <div class="sidebar-heading">
+            <div><span>章节目录</span><small id="chapterCount">0 章</small></div>
+            <button class="icon-button" id="newChapter" type="button" title="新建章节" aria-label="新建章节">＋</button>
+          </div>
+          <ol class="chapter-list" id="chapterList"></ol>
+        </section>
 
-    <section class="card next-steps">
-      <div class="section-title">
-        <p class="eyebrow">接下来</p>
-        <h2>推荐先做这 4 件事</h2>
-      </div>
-      <div class="next-grid">
-        <button data-command="生成第二章正文"><b>01 写第二章正文</b><span>从“来电人秦川”接起，目标 2200 字。</span></button>
-        <button data-command="补全第一卷大纲"><b>02 补 30 章大纲</b><span>把七号教学楼拆成 30 个小钩子。</span></button>
-        <button data-command="设计苏晚晴人物弧"><b>03 定苏晚晴人物弧</b><span>明确她为什么能成为第一个同伴。</span></button>
-        <button data-command="建立章节质检表"><b>04 建章节质检表</b><span>每章检查钩子、反转、恐怖感、爽点。</span></button>
-      </div>
-    </section>
+        <section class="local-note">
+          <b>本地创作</b>
+          <p>内容保存在当前浏览器。换设备前，请先点击“备份项目”。</p>
+        </section>
+      </aside>
 
-    <section class="card table-card">
-      <div class="section-title">
-        <p class="eyebrow">第一卷 · 七号教学楼</p>
-        <h2>近期章节安排</h2>
-      </div>
-      <div class="chapters">
-        <div><b>第 1 章 门口的尸体</b><span>已完成 · 约 2200 字 · 手机响起：来电人“秦川”。</span></div>
-        <div class="active"><b>第 2 章 第三次了</b><span>待续写 · 接电话、红校服女生出现、揭示“不要相信苏晚晴”。</span></div>
-        <div><b>第 3 章 不存在的第七人</b><span>找出人数错误，玩家中混入不该存在的人。</span></div>
-        <div><b>第 4 章 苏晚晴的座位</b><span>秦川第一次主动改变副本角色命运。</span></div>
-      </div>
-    </section>
-  </main>
+      <section class="workbench">
+        <div class="write-view" id="writeView">
+          <div class="document-head">
+            <div class="document-path"><span id="projectPath"></span><i>／</i><span id="chapterPath"></span></div>
+            <div class="chapter-controls">
+              <label class="status-select">状态
+                <select id="chapterStatus">
+                  <option value="draft">草稿</option>
+                  <option value="revising">修改中</option>
+                  <option value="done">已完成</option>
+                </select>
+              </label>
+              <button class="more-button" id="deleteChapter" type="button">删除本章</button>
+            </div>
+          </div>
 
-  <div class="toast" id="toast" role="status"></div>
+          <div class="paper">
+            <input class="chapter-title" id="chapterTitle" aria-label="章节标题" placeholder="输入章节标题" />
+            <textarea class="manuscript" id="chapterBody" aria-label="章节正文" placeholder="从这里开始写这一章……" spellcheck="true"></textarea>
+          </div>
+
+          <footer class="editor-footer">
+            <div><b id="wordCount">0</b> 字 <span>·</span> 本章</div>
+            <div id="updatedAt">尚未编辑</div>
+          </footer>
+        </div>
+
+        <div class="outline-view" id="outlineView" hidden>
+          <div class="outline-heading">
+            <div>
+              <p class="eyebrow">作品总纲</p>
+              <h1>把故事骨架放在正文旁边</h1>
+              <p>作品设定和当前章节提要都会自动保存，切回正文即可继续写作。</p>
+            </div>
+            <span class="project-progress" id="projectProgress">0 / 0 章完成</span>
+          </div>
+
+          <div class="outline-grid">
+            <section class="form-card">
+              <h2>作品信息</h2>
+              <label>作品名<input id="projectTitle" placeholder="给作品起一个名字" /></label>
+              <label>类型与标签<input id="projectGenre" placeholder="例如：悬疑无限流 / 规则怪谈" /></label>
+              <label>一句话核心钩子<textarea id="projectHook" rows="3" placeholder="一句话说清读者为什么想追下去"></textarea></label>
+              <label>故事总纲<textarea id="projectSynopsis" rows="8" placeholder="记录主线、终点、核心冲突和阶段推进"></textarea></label>
+            </section>
+
+            <section class="form-card chapter-outline-card">
+              <div class="form-card-heading">
+                <div><p>当前章节</p><h2 id="outlineChapterTitle">章节提要</h2></div>
+                <span id="outlineChapterStatus">草稿</span>
+              </div>
+              <label>本章目标<textarea id="chapterGoal" rows="4" placeholder="这一章要解决什么、让读者得到什么"></textarea></label>
+              <label>情节提要<textarea id="chapterOutline" rows="10" placeholder="按发生顺序记录冲突、信息揭示、转折和章末钩子"></textarea></label>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector" aria-label="写作进度">
+        <section class="inspector-card goal-card">
+          <p class="eyebrow">本章目标</p>
+          <div class="goal-number"><b id="goalCurrent">0</b><span>/</span><input id="chapterTarget" type="number" min="100" max="20000" step="100" aria-label="本章目标字数" /></div>
+          <div class="progress-track"><i id="goalBar"></i></div>
+          <p id="goalHint">还差 2200 字达到目标</p>
+        </section>
+
+        <section class="inspector-card outline-glance">
+          <div class="inspector-title"><p class="eyebrow">随手看</p><button type="button" id="editOutline">编辑大纲</button></div>
+          <h2>本章提要</h2>
+          <p id="outlineGlanceText">还没有本章提要。先写一句，明确本章的冲突和章末钩子。</p>
+        </section>
+
+        <section class="inspector-card shortcuts">
+          <p class="eyebrow">快捷键</p>
+          <dl>
+            <div><dt>保存</dt><dd><kbd>Ctrl</kbd><span>＋</span><kbd>S</kbd></dd></div>
+            <div><dt>正文</dt><dd><kbd>Ctrl</kbd><span>＋</span><kbd>1</kbd></dd></div>
+            <div><dt>大纲</dt><dd><kbd>Ctrl</kbd><span>＋</span><kbd>2</kbd></dd></div>
+          </dl>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <dialog id="nameDialog">
+    <form method="dialog" class="dialog-card">
+      <p class="eyebrow" id="dialogEyebrow">新建</p>
+      <h2 id="dialogTitle">新建章节</h2>
+      <label id="dialogLabel" for="dialogInput">章节标题</label>
+      <input id="dialogInput" autocomplete="off" maxlength="80" />
+      <p class="dialog-error" id="dialogError" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="quiet-button" type="submit">取消</button>
+        <button value="confirm" class="primary-button" type="submit">创建</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
 </body>
 </html>
